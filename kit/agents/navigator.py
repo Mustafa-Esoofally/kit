@@ -15,6 +15,7 @@ from agno.models.openai import OpenAIChat
 
 from kit.agents.settings import agent_db, kit_learnings
 from kit.config import KIT_MODEL
+from kit.hooks import error_learning_hook
 from kit.instructions import build_navigator_instructions
 from kit.tools import build_navigator_tools
 
@@ -32,6 +33,7 @@ navigator = Agent(
         learned_knowledge=LearnedKnowledgeConfig(mode=LearningMode.AGENTIC),
     ),
     tools=build_navigator_tools(kit_learnings),
+    post_hooks=[error_learning_hook],
     enable_agentic_memory=True,
     search_past_sessions=True,
     num_past_sessions_to_search=5,
