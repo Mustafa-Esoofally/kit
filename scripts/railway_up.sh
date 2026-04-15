@@ -80,7 +80,7 @@ fi
 
 echo -e "${BOLD}Initializing project...${NC}"
 echo ""
-railway init -n "kit"
+railway init -n "kit" -w "${RAILWAY_WORKSPACE:-My Projects}"
 
 echo ""
 echo -e "${BOLD}Deploying PgVector database...${NC}"
