@@ -24,7 +24,7 @@ from kit.config import TELEGRAM_TOKEN
 # Environment
 # ---------------------------------------------------------------------------
 runtime_env = getenv("RUNTIME_ENV", "dev")
-scheduler_base_url = getenv("AGENTOS_URL", "http://127.0.0.1:7777")
+scheduler_base_url = getenv("AGENTOS_URL", "http://127.0.0.1:8000")
 
 # ---------------------------------------------------------------------------
 # Interfaces
