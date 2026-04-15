@@ -18,11 +18,7 @@ from app.router import create_router
 from db import get_postgres_db
 from kit.agents import navigator
 from kit.agents.settings import kit_learnings
-from kit.config import (
-    SLACK_SIGNING_SECRET,
-    SLACK_TOKEN,
-    TELEGRAM_TOKEN,
-)
+from kit.config import TELEGRAM_TOKEN
 
 # ---------------------------------------------------------------------------
 # Environment
@@ -44,19 +40,6 @@ if TELEGRAM_TOKEN:
             token=TELEGRAM_TOKEN,
             streaming=True,
             reply_to_mentions_only=False,
-        )
-    )
-
-if SLACK_TOKEN and SLACK_SIGNING_SECRET:
-    from agno.os.interfaces.slack import Slack
-
-    interfaces.append(
-        Slack(
-            agent=navigator,
-            streaming=True,
-            token=SLACK_TOKEN,
-            signing_secret=SLACK_SIGNING_SECRET,
-            resolve_user_identity=True,
         )
     )
 

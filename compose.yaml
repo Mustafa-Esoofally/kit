@@ -26,7 +26,7 @@ services:
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
     restart: unless-stopped
     ports:
-      - "8000:8000"
+      - "${KIT_PORT:-8000}:8000"
     volumes:
       # Hot-reload: mount source code
       - .:/app
@@ -47,11 +47,8 @@ services:
       - PRINT_ENV_ON_LOAD=False
       # API keys
       - OPENAI_API_KEY=${OPENAI_API_KEY}
-      # Telegram (primary interface)
+      # Telegram (the only interface)
       - TELEGRAM_TOKEN=${TELEGRAM_TOKEN:-}
-      # Slack (optional interface)
-      - SLACK_TOKEN=${SLACK_TOKEN:-}
-      - SLACK_SIGNING_SECRET=${SLACK_SIGNING_SECRET:-}
       # Files
       - KIT_CONTEXT_DIR=/app/context
     depends_on:

@@ -2,13 +2,11 @@
 
 A simpler personal agent. Based on [pal](https://github.com/agno-agi/pal).
 
-Kit is a single-agent version of pal — no team, no wiki compilation pipeline, no Postgres. Just an agent that:
+Kit is a single-agent version of pal — no team, no wiki compilation pipeline. Just an agent that:
 
 - Talks to you on Telegram
 - Remembers what you tell it
-- Learns reusable patterns from your interactions
-- Uses tools to take action
-- Runs scheduled tasks unattended
+- Learns from its mistakes
 
 ## Quick Start
 
@@ -17,26 +15,27 @@ Kit is a single-agent version of pal — no team, no wiki compilation pipeline, 
 git clone https://github.com/agno-agi/kit
 cd kit
 
-# Install
-pip install -e .
-
 # Configure
 cp example.env .env
 # Edit .env: add OPENAI_API_KEY and TELEGRAM_TOKEN
 
 # Run
-python -m app.main
+docker compose up -d --build
 ```
 
 Then open Telegram and send your bot a message.
 
 ## How It Works
 
-Kit is one agent doing the job PAL's five-member team does, without the wiki compilation pipeline. It has three context systems:
+Kit has three memory layers (Ashpreet's canonical framing):
 
-1. **Learnings** (`kit_learnings`) — operational memory of what works. Vector-searched via ChromaDb.
-2. **Files** (`context/`) — user-authored preferences, notes, templates.
-3. **User Memory** — auto-managed by Agno, remembers facts about the user across sessions.
+1. **Session Memory** — conversation history, kept in Postgres keyed by `session_id`
+2. **User Memory** — auto-extracted facts about the user, kept in Postgres keyed by `user_id`
+3. **Learned Memory** — corrections and patterns, vector-searched via PgVector
+
+Plus one mechanism that makes kit get better over time:
+
+- **Error-learning post_hook** — when a run fails, the hook saves a `Correction` entry to the learned-memory store. Future similar requests retrieve the correction via vector search and the agent tries a different approach.
 
 ## Architecture
 
@@ -44,21 +43,17 @@ Kit mirrors pal's structure so you can diff the two repos and see what changed:
 
 | Pal | Kit | Change |
 |---|---|---|
-| 5-agent team (`pal/team.py`) | Single agent (`kit/agents/navigator.py`) | No coordinator, no specialists |
-| Postgres + pgvector | SQLite + ChromaDb | Zero-setup start |
-| Slack interface | Telegram (primary) + Slack (optional) | Phone-first |
+| 5-agent team | Single agent | No coordinator, no specialists |
+| Slack interface | Telegram | Phone-first |
 | Wiki compilation pipeline | None | Dropped |
 | Git sync | None | Dropped |
-| Google OAuth (Gmail + Calendar) | None (opt-in later) | Dropped for v1 |
-| 7 cron jobs | 1 cron job (morning briefing) | Trimmed |
+| Google OAuth | None | Dropped for v1 |
+| 7 cron jobs | 1 cron job | Trimmed |
 | `gpt-5.4` | `gpt-4o-mini` | Cheaper by default |
 
-## Interfaces
+## Interface
 
-| Interface | Required? | Env var |
-|---|---|---|
-| Telegram | Yes | `TELEGRAM_TOKEN` |
-| Slack | Optional | `SLACK_TOKEN` + `SLACK_SIGNING_SECRET` |
+Telegram only. Set `TELEGRAM_TOKEN` in your `.env`.
 
 ## License
 
