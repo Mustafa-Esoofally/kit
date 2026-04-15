@@ -135,17 +135,33 @@ Verify with:
 curl "https://api.telegram.org/bot${TELEGRAM_TOKEN}/getWebhookInfo"
 ```
 
-#### 4. Dev vs. production secret tokens
+#### 4. Generate and configure the webhook secret token
 
-For local testing, set `APP_ENV=development` in your `.env`. Telegram webhook secret validation is bypassed in development mode.
+Telegram signs every webhook request with a shared secret you pick. Both Kit and Telegram need to know the same value — you generate it once, set it on both sides, and Kit verifies the header on every request.
 
-For production, set `TELEGRAM_WEBHOOK_SECRET_TOKEN` to a random string and pass the same value via the `secret_token` parameter when calling `setWebhook`:
+**Generate a random secret:**
+
+```sh
+openssl rand -hex 32
+```
+
+**Add it to your `.env`** (copy the hex string you just generated):
+
+```env
+TELEGRAM_WEBHOOK_SECRET_TOKEN=8f3a...e1b2
+```
+
+**Use the same value when registering the webhook with Telegram:**
 
 ```sh
 curl -X POST "https://api.telegram.org/bot${TELEGRAM_TOKEN}/setWebhook" \
      --data-urlencode "url=https://<your-domain>/telegram/webhook" \
      --data-urlencode "secret_token=${TELEGRAM_WEBHOOK_SECRET_TOKEN}"
 ```
+
+Kit reads the secret from the `TELEGRAM_WEBHOOK_SECRET_TOKEN` env var at boot. When Telegram POSTs a webhook, Kit compares the incoming `X-Telegram-Bot-Api-Secret-Token` header against that env var via `hmac.compare_digest`. If they don't match, the request is rejected with a 403. This is how you know a webhook actually came from Telegram and not a random attacker who guessed your public URL.
+
+**For local testing only**: you can bypass the check by setting `APP_ENV=development` in your `.env` instead of configuring a secret. Never do this in production.
 
 #### 5. Restart Kit
 

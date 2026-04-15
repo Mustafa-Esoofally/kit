@@ -58,6 +58,26 @@ if [[ -z "$TELEGRAM_TOKEN" ]]; then
     exit 1
 fi
 
+if [[ -z "$TELEGRAM_WEBHOOK_SECRET_TOKEN" && "${APP_ENV:-}" != "development" ]]; then
+    echo ""
+    echo "TELEGRAM_WEBHOOK_SECRET_TOKEN not set."
+    echo ""
+    echo "In production, Telegram signs every webhook request with a shared secret."
+    echo "Without it, all incoming webhooks will be rejected with a 403."
+    echo ""
+    echo "Fix:"
+    echo "  1. Generate a secret:  openssl rand -hex 32"
+    echo "  2. Add it to .env.production as TELEGRAM_WEBHOOK_SECRET_TOKEN"
+    echo "  3. Rerun this script"
+    echo "  4. After deploy, pass the same value to Telegram's setWebhook:"
+    echo "       curl -X POST \"https://api.telegram.org/bot\${TELEGRAM_TOKEN}/setWebhook\" \\"
+    echo "            --data-urlencode \"url=https://<your-railway-domain>/telegram/webhook\" \\"
+    echo "            --data-urlencode \"secret_token=\${TELEGRAM_WEBHOOK_SECRET_TOKEN}\""
+    echo ""
+    echo "For testing only, set APP_ENV=development to bypass the check."
+    exit 1
+fi
+
 echo -e "${BOLD}Initializing project...${NC}"
 echo ""
 railway init -n "kit"
