@@ -15,7 +15,7 @@ from pathlib import Path
 from agno.os import AgentOS
 
 from app.router import create_router
-from db import get_db
+from db import get_postgres_db
 from kit.agents import navigator
 from kit.agents.settings import kit_learnings
 from kit.config import (
@@ -80,7 +80,7 @@ agent_os = AgentOS(
     scheduler_base_url=scheduler_base_url,
     authorization=runtime_env == "prd",
     lifespan=lifespan,
-    db=get_db(),
+    db=get_postgres_db(),
     agents=[navigator],
     knowledge=[kit_learnings],
     interfaces=interfaces,
@@ -98,7 +98,7 @@ def _register_schedules() -> None:
     """Register scheduled tasks (idempotent — safe on every startup)."""
     from agno.scheduler import ScheduleManager
 
-    mgr = ScheduleManager(get_db())
+    mgr = ScheduleManager(get_postgres_db())
 
     mgr.create(
         name="morning-briefing",

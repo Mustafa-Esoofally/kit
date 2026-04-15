@@ -2,48 +2,51 @@
 Database Session
 ----------------
 
-SQLite for sessions + ChromaDb for vector search. Zero setup — both are
-local files under tmp/. Swap out for Postgres + pgvector if you outgrow
-SQLite.
+PostgreSQL + PgVector for Kit. Mirrors pal's storage stack exactly —
+sessions, user memory, and learned memory all live in Postgres.
 """
 
-from pathlib import Path
-
-from agno.db.sqlite import SqliteDb
+from agno.db.postgres import PostgresDb
 from agno.knowledge import Knowledge
 from agno.knowledge.embedder.openai import OpenAIEmbedder
-from agno.vectordb.chroma import ChromaDb
+from agno.vectordb.pgvector import PgVector, SearchType
 
-from db.url import db_file
+from db.url import db_url
 
 DB_ID = "kit-db"
 
-_CHROMA_PATH = Path(__file__).parent.parent / "tmp" / "chromadb"
+
+def get_postgres_db(contents_table: str | None = None) -> PostgresDb:
+    """Create a PostgresDb instance.
+
+    Args:
+        contents_table: Optional table name for storing knowledge contents.
+
+    Returns:
+        Configured PostgresDb instance.
+    """
+    if contents_table is not None:
+        return PostgresDb(id=DB_ID, db_url=db_url, knowledge_table=contents_table)
+    return PostgresDb(id=DB_ID, db_url=db_url)
 
 
-def get_db() -> SqliteDb:
-    """Create a SqliteDb instance. Ensures tmp/ exists."""
-    Path(db_file).parent.mkdir(parents=True, exist_ok=True)
-    return SqliteDb(id=DB_ID, db_file=db_file)
-
-
-def create_knowledge(name: str, collection: str) -> Knowledge:
-    """Create a Knowledge instance backed by ChromaDb.
+def create_knowledge(name: str, table_name: str) -> Knowledge:
+    """Create a Knowledge instance with PgVector hybrid search.
 
     Args:
         name: Display name for the knowledge base.
-        collection: ChromaDb collection name (one per logical store).
+        table_name: PostgreSQL table name for vector storage.
 
     Returns:
-        Configured Knowledge instance sharing the SqliteDb as contents store.
+        Configured Knowledge instance.
     """
-    _CHROMA_PATH.mkdir(parents=True, exist_ok=True)
     return Knowledge(
         name=name,
-        vector_db=ChromaDb(
-            name=collection,
-            path=str(_CHROMA_PATH),
+        vector_db=PgVector(
+            db_url=db_url,
+            table_name=table_name,
+            search_type=SearchType.hybrid,
             embedder=OpenAIEmbedder(id="text-embedding-3-small"),
         ),
-        contents_db=get_db(),
+        contents_db=get_postgres_db(contents_table=f"{table_name}_contents"),
     )

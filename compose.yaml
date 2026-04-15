@@ -1,0 +1,68 @@
+# Docker Compose reads from .env by default (local development).
+# Production keys go in .env.production (used by Railway via railway_env.sh).
+
+services:
+  kit-db:
+    image: agnohq/pgvector:18
+    container_name: kit-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER:-ai}
+      POSTGRES_PASSWORD: ${DB_PASS:-ai}
+      POSTGRES_DB: ${DB_DATABASE:-ai}
+    volumes:
+      - pgdata:/var/lib/postgresql
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    networks:
+      - kit
+
+  kit-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ${IMAGE_NAME:-kit}:${IMAGE_TAG:-latest}
+    container_name: kit-api
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      # Hot-reload: mount source code
+      - .:/app
+      # User files
+      - ${KIT_CONTEXT_DIR:-./context}:/app/context
+    environment:
+      - RUNTIME_ENV=dev
+      - APP_ENV=development
+      - AGNO_DEBUG=True
+      - PYTHONPATH=/app
+      # Database
+      - DB_HOST=kit-db
+      - DB_PORT=5432
+      - DB_USER=${DB_USER:-ai}
+      - DB_PASS=${DB_PASS:-ai}
+      - DB_DATABASE=${DB_DATABASE:-ai}
+      - WAIT_FOR_DB=True
+      - PRINT_ENV_ON_LOAD=False
+      # API keys
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      # Telegram (primary interface)
+      - TELEGRAM_TOKEN=${TELEGRAM_TOKEN:-}
+      # Slack (optional interface)
+      - SLACK_TOKEN=${SLACK_TOKEN:-}
+      - SLACK_SIGNING_SECRET=${SLACK_SIGNING_SECRET:-}
+      # Files
+      - KIT_CONTEXT_DIR=/app/context
+    depends_on:
+      - kit-db
+    networks:
+      - kit
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+networks:
+  kit:
+
+volumes:
+  pgdata:

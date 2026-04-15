@@ -2,14 +2,14 @@
 Database Module
 ---------------
 
-SQLite + ChromaDb helpers for sessions and knowledge bases.
+Database connection utilities.
 """
 
-from db.session import create_knowledge, get_db
-from db.url import db_file
+from db.session import create_knowledge, get_postgres_db
+from db.url import db_url
 
 __all__ = [
     "create_knowledge",
-    "db_file",
-    "get_db",
+    "db_url",
+    "get_postgres_db",
 ]

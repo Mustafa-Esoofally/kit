@@ -1,0 +1,116 @@
+#!/bin/bash
+
+############################################################################
+#
+#    Kit Railway Setup (first-time provisioning)
+#
+#    Usage: ./scripts/railway_up.sh
+#    Redeploy: ./scripts/railway_redeploy.sh
+#
+#    Prerequisites:
+#      - Railway CLI installed
+#      - Logged in via `railway login`
+#      - OPENAI_API_KEY and TELEGRAM_TOKEN set in environment
+#
+############################################################################
+
+set -e
+
+# Colors
+ORANGE='\033[38;5;208m'
+DIM='\033[2m'
+BOLD='\033[1m'
+NC='\033[0m'
+
+echo ""
+echo -e "${ORANGE}"
+cat << 'BANNER'
+     █████╗  ██████╗ ███╗   ██╗ ██████╗
+    ██╔══██╗██╔════╝ ████╗  ██║██╔═══██╗
+    ███████║██║  ███╗██╔██╗ ██║██║   ██║
+    ██╔══██║██║   ██║██║╚██╗██║██║   ██║
+    ██║  ██║╚██████╔╝██║ ╚████║╚██████╔╝
+    ╚═╝  ╚═╝ ╚═════╝ ╚═╝  ╚═══╝ ╚═════╝
+BANNER
+echo -e "${NC}"
+
+# Load .env.production if it exists
+if [[ -f .env.production ]]; then
+    set -a
+    source .env.production
+    set +a
+    echo -e "${DIM}Loaded .env.production${NC}"
+fi
+
+# Preflight
+if ! command -v railway &> /dev/null; then
+    echo "Railway CLI not found. Install: https://docs.railway.app/guides/cli"
+    exit 1
+fi
+
+if [[ -z "$OPENAI_API_KEY" ]]; then
+    echo "OPENAI_API_KEY not set. Add to .env.production or export it."
+    exit 1
+fi
+
+if [[ -z "$TELEGRAM_TOKEN" ]]; then
+    echo "TELEGRAM_TOKEN not set. Add to .env.production or export it."
+    exit 1
+fi
+
+echo -e "${BOLD}Initializing project...${NC}"
+echo ""
+railway init -n "kit"
+
+echo ""
+echo -e "${BOLD}Deploying PgVector database...${NC}"
+echo ""
+railway add -s pgvector -i agnohq/pgvector:18 \
+    -v "POSTGRES_USER=${DB_USER:-ai}" \
+    -v "POSTGRES_PASSWORD=${DB_PASS:-ai}" \
+    -v "POSTGRES_DB=${DB_DATABASE:-ai}" \
+    -v "PGDATA=/var/lib/postgresql/data"
+
+echo ""
+echo ""
+echo -e "${BOLD}Adding database volume...${NC}"
+railway service link pgvector
+railway volume add -m /var/lib/postgresql/data 2>/dev/null || echo -e "${DIM}Volume already exists or skipped${NC}"
+
+echo ""
+echo -e "${DIM}Waiting 15s for database...${NC}"
+sleep 15
+
+echo ""
+echo -e "${BOLD}Creating application service...${NC}"
+echo ""
+railway add -s kit \
+    -v "DB_USER=${DB_USER:-ai}" \
+    -v "DB_PASS=${DB_PASS:-ai}" \
+    -v "DB_HOST=pgvector.railway.internal" \
+    -v "DB_PORT=${DB_PORT:-5432}" \
+    -v "DB_DATABASE=${DB_DATABASE:-ai}" \
+    -v "DB_DRIVER=postgresql+psycopg" \
+    -v "WAIT_FOR_DB=True" \
+    -v "OPENAI_API_KEY=${OPENAI_API_KEY}" \
+    -v "TELEGRAM_TOKEN=${TELEGRAM_TOKEN}" \
+    -v "TELEGRAM_WEBHOOK_SECRET_TOKEN=${TELEGRAM_WEBHOOK_SECRET_TOKEN:-}" \
+    -v "SLACK_TOKEN=${SLACK_TOKEN:-}" \
+    -v "SLACK_SIGNING_SECRET=${SLACK_SIGNING_SECRET:-}" \
+    -v "JWT_VERIFICATION_KEY=${JWT_VERIFICATION_KEY:-}" \
+    -v "PORT=8000"
+
+echo ""
+echo -e "${BOLD}Deploying application...${NC}"
+echo ""
+railway up --service kit -d
+
+echo ""
+echo -e "${BOLD}Creating domain...${NC}"
+echo ""
+railway domain --service kit
+
+echo ""
+echo -e "${BOLD}Done.${NC} Domain may take ~5 minutes."
+echo -e "${DIM}Logs: railway logs --service kit${NC}"
+echo ""
