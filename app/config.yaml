@@ -1,0 +1,6 @@
+chat:
+  quick_prompts:
+    navigator:
+      - "What can you do?"
+      - "Search the web for the latest news on Agno."
+      - "What do you know about me so far?"
